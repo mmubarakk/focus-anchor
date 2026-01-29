@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Anchor</title>
+    <meta name="theme-color" content="#0f0f12">
+    
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Focus%20Anchor%22,%22short_name%22:%22Anchor%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22#0f0f12%22,%22theme_color%22:%22#7c4dff%22,%22icons%22:[{%22src%22:%22https://i.ibb.co/L6M9S8V/anchor-icon.png%22,%22sizes%22:%22512x512%22,%22type%22:%22image/png%22}]} border=">
+    
+    <link rel="icon" href="https://i.ibb.co/L6M9S8V/anchor-icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="https://i.ibb.co/L6M9S8V/anchor-icon.png">
+
+    <style>
+        :root {
+            --bg: #0f0f12;
+            --surface: #1a1a24;
+            --accent: #7c4dff;
+            --text: #f0f0f0;
+            --parking: #00e5ff;
+            --danger: #ff5252;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            -webkit-user-select: none; /* Feels more like an app */
+            user-select: none;
+        }
+
+        #progress-container {
+            width: 100%;
+            height: 6px;
+            background: #222;
+            position: fixed;
+            top: 0;
+            z-index: 100;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), var(--parking));
+            transition: width 0.5s ease;
+        }
+
+        #anchor-zone {
+            width: 100%;
+            padding: 60px 20px;
+            text-align: center;
+            background: var(--surface);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--parking);
+            margin-bottom: 15px;
+            font-weight: 800;
+        }
+
+        #current-task-display {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(124, 77, 255, 0.4);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #app-container {
+            flex-grow: 1;
+            width: 90%;
+            max-width: 500px;
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        input {
+            flex-grow: 1;
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid #333;
+            background: #000;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        input:focus { border-color: var(--accent); }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: transform 0.1s;
+        }
+
+        .btn:active { transform: scale(0.95); }
+        .btn-park { background: var(--parking); color: #000; }
+        .btn-anchor { background: var(--accent); color: #fff; }
+
+        #list-header {
+            font-size: 0.75rem;
+            margin-bottom: 10px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clear-link {
+            color: var(--danger);
+            cursor: pointer;
+            text-decoration: underline;
+            opacity: 0.7;
+        }
+
+        #idea-list {
+            list-style: none;
+            padding: 0;
+            overflow-y: auto;
+            mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+            padding-bottom: 50px;
+        }
+
+        .idea-item {
+            background: #22222e;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid var(--parking);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #555;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="progress-container"><div id="progress-bar"></div></div>
+
+    <div id="anchor-zone">
+        <div class="label">Current Focus Anchor</div>
+        <div id="current-task-display">Focus on your first goal...</div>
+    </div>
+
+    <div id="app-container">
+        <div class="input-wrapper">
+            <input type="text" id="main-input" placeholder="New idea or task..." autocomplete="off">
+            <button class="btn btn-park" onclick="parkIdea()">Park</button>
+            <button class="btn btn-anchor" onclick="setAnchor()">Anchor</button>
+        </div>
+
+        <div id="list-header">
+            <span>PARKING LOT (<span id="count">0</span>)</span>
+            <span class="clear-link" onclick="clearAllIdeas()">Clear All</span>
+        </div>
+        
+        <ul id="idea-list"></ul>
+    </div>
+
+    <script>
+        // SERVICE WORKER REGISTRATION (For PWA)
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', e => e.waitUntil(caches.open('v1').then(c => c.add(location.href))));
+                self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
+            `;
+            const blob = new Blob([swCode], {type: 'text/javascript'});
+            navigator.serviceWorker.register(URL.createObjectURL(blob));
+        }
+
+        let parkedIdeas = JSON.parse(localStorage.getItem('focus_parked_ideas')) || [];
+        let currentAnchor = localStorage.getItem('focus_current_anchor') || "Focus on your first goal...";
+
+        window.onload = () => {
+            document.getElementById('current-task-display').innerText = currentAnchor;
+            renderList();
+            if(currentAnchor !== "Focus on your first goal...") startPulse();
+        };
+
+        function setAnchor() {
+            const input = document.getElementById('main-input');
+            if (!input.value.trim()) return;
+            currentAnchor = input.value;
+            localStorage.setItem('focus_current_anchor', currentAnchor);
+            document.getElementById('current-task-display').innerText = currentAnchor;
+            input.value = "";
+            startPulse();
+        }
+
+        function parkIdea() {
+            const input = document.getElementById('main-input');
+            if (!input.value.trim()) return;
+            parkedIdeas.unshift(input.value);
+            saveAndRender();
+            input.value = "";
+        }
+
+        function removeIdea(index) {
+            parkedIdeas.splice(index, 1);
+            saveAndRender();
+        }
+
+        function clearAllIdeas() {
+            if (parkedIdeas.length === 0) return;
+            if (confirm("Clear all parked ideas?")) {
+                parkedIdeas = [];
+                saveAndRender();
+            }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('focus_parked_ideas', JSON.stringify(parkedIdeas));
+            renderList();
+        }
+
+        function renderList() {
+            const list = document.getElementById('idea-list');
+            const count = document.getElementById('count');
+            list.innerHTML = "";
+            parkedIdeas.forEach((idea, index) => {
+                const li = document.createElement('li');
+                li.className = 'idea-item';
+                li.innerHTML = `<span>${idea}</span><button class="delete-btn" onclick="removeIdea(${index})">×</button>`;
+                list.appendChild(li);
+            });
+            count.innerText = parkedIdeas.length;
+        }
+
+        document.getElementById('main-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') parkIdea();
+        });
+
+        function startPulse() {
+            const bar = document.getElementById('progress-bar');
+            let width = 0;
+            clearInterval(window.pulseInterval);
+            window.pulseInterval = setInterval(() => {
+                width += 0.1; 
+                if (width > 100) width = 0;
+                bar.style.width = width + "%";
+            }, 1500); 
+        }
+    </script>
+</body>
+</html>
